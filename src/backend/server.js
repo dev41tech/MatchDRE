@@ -5,7 +5,7 @@ const tenantsRouter  = require('./routes/tenants');
 const mappingsRouter = require('./routes/mappings');
 
 const app  = express();
-const PORT = process.env.PORT || 3001;
+const PORT = process.env.PORT || 3011;
 
 // --- Middleware global ---
 app.use(express.json());
@@ -44,7 +44,7 @@ app.use((err, req, res, _next) => {
 });
 
 // --- Start ---
-app.listen(PORT, () => {
+app.listen(PORT, '0.0.0.0', () => {
   console.log(`[server] Backend rodando na porta ${PORT}`);
 });
 
