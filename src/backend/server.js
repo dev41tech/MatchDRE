@@ -3,11 +3,13 @@ const express = require('express');
 
 const tenantsRouter  = require('./routes/tenants');
 const mappingsRouter = require('./routes/mappings');
+const { createCorsMiddleware } = require('./middleware/cors');
 
 const app  = express();
 const PORT = process.env.PORT || 3011;
 
 // --- Middleware global ---
+app.use(createCorsMiddleware());
 app.use(express.json());
 
 // Log simples de requisições
