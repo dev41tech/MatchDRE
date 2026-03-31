@@ -1,0 +1,20 @@
+services:
+  backend:
+    build:
+      context: ./src/backend
+    env_file:
+      - ./src/backend/.env
+    ports:
+      - "3001:3001"
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./src/frontend
+    environment:
+      API_UPSTREAM: http://backend:3001
+    depends_on:
+      - backend
+    ports:
+      - "80:80"
+    restart: unless-stopped

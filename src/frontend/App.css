@@ -1,0 +1,276 @@
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-size: 14px;
+  background: #f5f6fa;
+  color: #222;
+}
+
+/* Layout */
+.app {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 24px 16px;
+}
+
+.app-header {
+  margin-bottom: 24px;
+  text-align: center
+}
+
+.app-header h1 {
+  font-size: 22px;
+  font-weight: 600;
+  color: #1a1a2e;
+}
+
+.app-header p {
+  color: #666;
+  margin-top: 4px;
+  font-size: 13px;
+}
+
+/* Card container */
+.card {
+  background: #fff;
+  border-radius: 8px;
+  border: 1px solid #e0e0e0;
+  padding: 20px;
+  margin-bottom: 16px;
+}
+
+/* TenantSelector */
+.tenant-selector {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.tenant-selector label {
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.tenant-selector select {
+  padding: 7px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  min-width: 220px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.tenant-selector select:focus {
+  outline: none;
+  border-color: #4a6fa5;
+  box-shadow: 0 0 0 2px rgba(74, 111, 165, 0.2);
+}
+
+/* ActionBar */
+.action-bar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 12px 0;
+}
+
+.action-bar label {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  user-select: none;
+}
+
+.action-bar select {
+  padding: 7px 12px;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 14px;
+  min-width: 240px;
+  background: #fff;
+}
+
+.action-bar select:focus {
+  outline: none;
+  border-color: #4a6fa5;
+}
+
+.btn-save {
+  padding: 8px 20px;
+  background: #4a6fa5;
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+
+.btn-save:hover:not(:disabled) {
+  background: #3a5a8a;
+}
+
+.btn-save:disabled {
+  background: #b0bec5;
+  cursor: not-allowed;
+}
+
+.selection-count {
+  margin-left: auto;
+  font-size: 13px;
+  color: #555;
+  white-space: nowrap;
+}
+
+/* CategoryTable */
+.category-table-wrapper {
+  overflow-x: auto;
+}
+
+.category-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.category-table th {
+  background: #f0f2f8;
+  text-align: left;
+  padding: 10px 12px;
+  font-weight: 600;
+  border-bottom: 2px solid #dde2ef;
+  white-space: nowrap;
+}
+
+.category-table td {
+  padding: 9px 12px;
+  border-bottom: 1px solid #eef0f5;
+  vertical-align: middle;
+}
+
+.category-table tr:last-child td {
+  border-bottom: none;
+}
+
+/* Destaque visual para NAO_MAPEADA */
+.row-nao-mapeada {
+  background: #fffbec;
+}
+
+.row-nao-mapeada:hover {
+  background: #fff5d0;
+}
+
+.row-mapeada:hover {
+  background: #f7f8fc;
+}
+
+.badge-nao-mapeada {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #f8d7da;
+  color: #721C24;
+  border: 1px solid #f5c6cb;
+}
+
+.badge-mapeada {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #28a745;
+}
+
+.category-table input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  cursor: pointer;
+}
+
+.table-footer {
+  padding: 10px 12px;
+  font-size: 13px;
+  color: #555;
+  border-top: 1px solid #eef0f5;
+  background: #fafbff;
+}
+
+/* Estados de loading / erro / vazio */
+.state-message {
+  padding: 32px;
+  text-align: center;
+  color: #666;
+  font-size: 14px;
+}
+
+.state-message.error {
+  color: #c0392b;
+}
+
+/* Toast */
+.toast-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.toast {
+  padding: 12px 18px;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  min-width: 260px;
+  max-width: 420px;
+  animation: slideIn 0.2s ease-out;
+}
+
+.toast-success {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.toast-error {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+@keyframes slideIn {
+  from { transform: translateX(40px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+/* Separador de seção */
+.section-divider {
+  border: none;
+  border-top: 1px solid #e8eaf2;
+  margin: 4px 0 16px;
+}
+
+/* Utilitários */
+.text-muted {
+  color: #888;
+  font-size: 12px;
+}
