@@ -24,4 +24,6 @@ docker compose up -d --build
 
 - O frontend faz proxy de `/api/` para `http://backend:3011`.
 - O backend usa as variaveis de ambiente de `src/backend/.env`.
-- Se voce quiser trocar o destino da API no frontend, altere `API_UPSTREAM` no `docker-compose.yml`.
+- `VITE_API_URL` e lida no build do frontend, nao em runtime no container nginx.
+- Se voce quiser chamar a API por dominio externo no browser, ajuste o `build.args.VITE_API_URL` no `docker-compose.yml`.
+- Se voce quiser usar somente proxy interno, deixe `VITE_API_URL` vazio e mantenha `API_UPSTREAM`.

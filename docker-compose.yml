@@ -13,6 +13,8 @@ services:
   frontend:
     build:
       context: ./src/frontend
+      args:
+        VITE_API_URL: ""
     environment:
       API_UPSTREAM: http://backend:3011
     depends_on:
