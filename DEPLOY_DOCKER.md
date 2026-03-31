@@ -17,7 +17,7 @@ docker compose up -d --build
 
 ## Portas
 
-- Frontend: `80`
+- Frontend: `85` no host, `80` no container
 - Backend: `3011`
 
 ## Observacoes

@@ -14,9 +14,9 @@ services:
     build:
       context: ./src/frontend
     environment:
-      API_UPSTREAM: http://api.matchdre.41tech.cloud
+      API_UPSTREAM: http://backend:3011
     depends_on:
       - backend
     ports:
-      - "85:85"
+      - "85:80"
     restart: unless-stopped
