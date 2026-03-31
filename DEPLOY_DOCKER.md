@@ -18,10 +18,10 @@ docker compose up -d --build
 ## Portas
 
 - Frontend: `80`
-- Backend: `3001`
+- Backend: `3011`
 
 ## Observacoes
 
-- O frontend faz proxy de `/api/` para `http://backend:3001`.
+- O frontend faz proxy de `/api/` para `http://backend:3011`.
 - O backend usa as variaveis de ambiente de `src/backend/.env`.
 - Se voce quiser trocar o destino da API no frontend, altere `API_UPSTREAM` no `docker-compose.yml`.

@@ -4,15 +4,17 @@ services:
       context: ./src/backend
     env_file:
       - ./src/backend/.env
+    environment:
+      PORT: 3011
     ports:
-      - "3001:3001"
+      - "3011:3011"
     restart: unless-stopped
 
   frontend:
     build:
       context: ./src/frontend
     environment:
-      API_UPSTREAM: http://api.matchdre.41tech.cloud
+      API_UPSTREAM: http://backend:3011
     depends_on:
       - backend
     ports:
