@@ -2,27 +2,30 @@ import React from 'react';
 import { useMappings } from './hooks/useMappings.js';
 import TenantSelector from './components/TenantSelector.jsx';
 import ActionBar      from './components/ActionBar.jsx';
+import SearchBar      from './components/SearchBar.jsx';
 import CategoryTable  from './components/CategoryTable.jsx';
 import Toast          from './components/Toast.jsx';
 
 export default function App() {
   const {
-    // Estado
     tenants,
     tenantId,
     dreGroups,
     categoriasVisiveis,
+    categorias,
+    totalAntesBusca,
     selecionadas,
     filtroAtivo,
+    busca,
     grupoDre,
     loading,
     salvando,
     erro,
     toast,
 
-    // Ações
     selectTenant,
     toggleFilter,
+    setBusca,
     toggleCategory,
     selectAll,
     deselectAll,
@@ -30,16 +33,22 @@ export default function App() {
     save,
     clearToast,
     clearMapping,
-    
+    clearAllMappings,
   } = useMappings();
+
+  const temMapeamentos = categorias.some(c => c.status === 'MAPEADA');
 
   return (
     <div className="app">
       {/* Cabeçalho */}
-      <div className="app-header">
-        <h1>Mapeamento de Categorias DRE</h1>
-        <p>Associe categorias financeiras aos grupos do DRE por cliente.</p>
-      </div>
+      <header className="app-header">
+        <div className="app-header-content">
+          <div>
+            <h1>Mapeamento DRE</h1>
+            <p>Associe categorias financeiras aos grupos do Demonstrativo de Resultado por cliente.</p>
+          </div>
+        </div>
+      </header>
 
       {/* Seleção de cliente */}
       <div className="card">
@@ -47,14 +56,14 @@ export default function App() {
           tenants={tenants}
           tenantId={tenantId}
           onSelect={selectTenant}
-          loading={loading}
+          loading={loading && !tenantId}
         />
       </div>
 
-      {/* Conteúdo principal — exibido apenas após seleção de tenant */}
       {tenantId && (
         <>
-          <div className="card">
+          {/* ActionBar sticky */}
+          <div className="action-bar-sticky">
             <ActionBar
               dreGroups={dreGroups}
               grupoDre={grupoDre}
@@ -64,36 +73,53 @@ export default function App() {
               selecionadas={selecionadas}
               salvando={salvando}
               onSave={save}
+              onClearAll={clearAllMappings}
+              temMapeamentos={temMapeamentos}
             />
           </div>
 
+          {/* Card da tabela */}
           <div className="card">
-            {/* Estado de loading */}
             {loading && (
-              <div className="state-message">Carregando categorias…</div>
+              <div className="state-loading">
+                <div className="loading-spinner" />
+                <span>Carregando categorias…</span>
+              </div>
             )}
 
-            {/* Erro no carregamento */}
             {!loading && erro && (
-              <div className="state-message error">{erro}</div>
+              <div className="state-message error">
+                <strong>Erro ao carregar:</strong> {erro}
+              </div>
             )}
 
-            {/* Tabela de categorias */}
             {!loading && !erro && (
-              <CategoryTable
-                categorias={categoriasVisiveis}
-                selecionadas={selecionadas}
-                onToggle={toggleCategory}
-                onSelectAll={selectAll}
-                onDeselectAll={deselectAll}
-                clearMapping={clearMapping}
-              />
+              <>
+                {/* Toolbar da tabela: barra de busca */}
+                <div className="table-toolbar">
+                  <SearchBar
+                    value={busca}
+                    onChange={setBusca}
+                    resultCount={categoriasVisiveis.length}
+                    totalCount={totalAntesBusca}
+                  />
+                </div>
+
+                <CategoryTable
+                  categorias={categoriasVisiveis}
+                  selecionadas={selecionadas}
+                  onToggle={toggleCategory}
+                  onSelectAll={selectAll}
+                  onDeselectAll={deselectAll}
+                  clearMapping={clearMapping}
+                  busca={busca}
+                />
+              </>
             )}
           </div>
         </>
       )}
 
-      {/* Toast de sucesso/erro */}
       <Toast toast={toast} onDismiss={clearToast} />
     </div>
   );

@@ -5,23 +5,25 @@ import {
   fetchMappings,
   bulkUpsert,
   clearCategoryMapping,
+  clearAllMappings as clearAllMappingsAPI,
 } from '../api/client.js';
 
 // ---------------------------------------------------------------------------
 // Estado inicial
 // ---------------------------------------------------------------------------
 const INITIAL_STATE = {
-  tenants:     [],        // string[] — lista de tenant_ids disponíveis
-  tenantId:    null,      // tenant selecionado atualmente
-  dreGroups:   [],        // [{ codigo, nome }] grupos selecionáveis
-  categorias:  [],        // Categoria[] carregadas da API (lista completa)
-  selecionadas: new Set(), // Set<chave_categoria>
-  filtroAtivo: false,     // "somente não mapeadas"
-  grupoDre:    null,      // código do grupo DRE escolhido
-  loading:     false,
-  salvando:    false,
-  erro:        null,
-  toast:       null,      // { tipo: 'success'|'error', mensagem: string }
+  tenants:      [],
+  tenantId:     null,
+  dreGroups:    [],
+  categorias:   [],
+  selecionadas: new Set(),
+  filtroAtivo:  false,
+  busca:        '',        // termo de busca livre
+  grupoDre:     null,
+  loading:      false,
+  salvando:     false,
+  erro:         null,
+  toast:        null,
 };
 
 // ---------------------------------------------------------------------------
@@ -45,12 +47,13 @@ function reducer(state, action) {
     case 'SELECT_TENANT':
       return {
         ...state,
-        tenantId: action.payload,
-        categorias: [],
+        tenantId:     action.payload,
+        categorias:   [],
         selecionadas: new Set(),
-        grupoDre: null,
-        dreGroups: [],
-        erro: null,
+        grupoDre:     null,
+        dreGroups:    [],
+        busca:        '',   // limpa busca ao trocar de tenant
+        erro:         null,
       };
 
     case 'SET_CATEGORIAS':
@@ -62,6 +65,9 @@ function reducer(state, action) {
     case 'TOGGLE_FILTER':
       return { ...state, filtroAtivo: !state.filtroAtivo };
 
+    case 'SET_BUSCA':
+      return { ...state, busca: action.payload };
+
     case 'TOGGLE_CATEGORY': {
       const next = new Set(state.selecionadas);
       if (next.has(action.payload)) {
@@ -72,10 +78,8 @@ function reducer(state, action) {
       return { ...state, selecionadas: next };
     }
 
-    case 'SELECT_ALL': {
-      const visiveis = action.payload; // chave_categoria[] das linhas visíveis
-      return { ...state, selecionadas: new Set(visiveis) };
-    }
+    case 'SELECT_ALL':
+      return { ...state, selecionadas: new Set(action.payload) };
 
     case 'DESELECT_ALL':
       return { ...state, selecionadas: new Set() };
@@ -87,8 +91,8 @@ function reducer(state, action) {
       return {
         ...state,
         selecionadas: new Set(),
-        grupoDre: null,
-        salvando: false,
+        grupoDre:     null,
+        salvando:     false,
       };
 
     case 'REMOVE_SELECTED_CATEGORY': {
@@ -132,7 +136,6 @@ export function useMappings() {
 
     dispatch({ type: 'SET_LOADING', payload: true });
 
-    // Busca categorias e grupos DRE em paralelo
     Promise.all([
       fetchMappings(tenantId),
       fetchDreGroups(tenantId),
@@ -147,9 +150,14 @@ export function useMappings() {
       });
   }, []);
 
-  // --- Filtro local ---
+  // --- Filtro de status ---
   const toggleFilter = useCallback(() => {
     dispatch({ type: 'TOGGLE_FILTER' });
+  }, []);
+
+  // --- Busca livre ---
+  const setBusca = useCallback((termo) => {
+    dispatch({ type: 'SET_BUSCA', payload: termo });
   }, []);
 
   // --- Seleção de categoria ---
@@ -157,7 +165,6 @@ export function useMappings() {
     dispatch({ type: 'TOGGLE_CATEGORY', payload: chave });
   }, []);
 
-  // --- Selecionar todas as visíveis ---
   const selectAll = useCallback((chavesVisiveis) => {
     dispatch({ type: 'SELECT_ALL', payload: chavesVisiveis });
   }, []);
@@ -178,21 +185,19 @@ export function useMappings() {
 
     dispatch({ type: 'SET_SALVANDO', payload: true });
 
-    // Monta payload com chave + nome das categorias selecionadas
     const payload = {
       grupo_dre: grupoDre,
       categorias: categorias
         .filter(c => selecionadas.has(c.chave_categoria))
         .map(c => ({
           chave_categoria: c.chave_categoria,
-          nome_categoria: c.nome_categoria,
+          nome_categoria:  c.nome_categoria,
         })),
     };
 
     try {
       const result = await bulkUpsert(tenantId, payload);
 
-      // Recarrega a listagem após sucesso
       const categoriasFrescas = await fetchMappings(tenantId);
       dispatch({ type: 'SET_CATEGORIAS', payload: categoriasFrescas });
       dispatch({ type: 'AFTER_SAVE' });
@@ -209,8 +214,9 @@ export function useMappings() {
     }
   }, [state]);
 
+  // --- Limpar mapeamento individual ---
   const clearMapping = useCallback(async (chaveCategoria) => {
-    const { tenantId, selecionadas } = state;
+    const { tenantId } = state;
     if (!tenantId || !chaveCategoria) return;
 
     dispatch({ type: 'SET_LOADING', payload: true });
@@ -220,19 +226,47 @@ export function useMappings() {
 
       const categoriasFrescas = await fetchMappings(tenantId);
       dispatch({ type: 'SET_CATEGORIAS', payload: categoriasFrescas });
-
+      dispatch({ type: 'REMOVE_SELECTED_CATEGORY', payload: chaveCategoria });
       dispatch({
         type: 'SET_TOAST',
         payload: { tipo: 'success', mensagem: 'Mapeamento removido com sucesso.' },
       });
-
-      dispatch({ type: 'REMOVE_SELECTED_CATEGORY', payload: chaveCategoria });
     } catch (err) {
-      console.error('[useMappings clearMapping error:', err);
+      console.error('[useMappings] clearMapping error:', err);
       dispatch({ type: 'SET_LOADING', payload: false });
       dispatch({
         type: 'SET_TOAST',
-        payload: { tipo: 'error', mensagem: err.message || 'Erro ao limpar mapeamento.'},
+        payload: { tipo: 'error', mensagem: err.message || 'Erro ao limpar mapeamento.' },
+      });
+    }
+  }, [state]);
+
+  // --- Limpar TODOS os mapeamentos do tenant ---
+  const clearAllMappings = useCallback(async () => {
+    const { tenantId } = state;
+    if (!tenantId) return;
+
+    dispatch({ type: 'SET_LOADING', payload: true });
+
+    try {
+      const result = await clearAllMappingsAPI(tenantId);
+
+      const categoriasFrescas = await fetchMappings(tenantId);
+      dispatch({ type: 'SET_CATEGORIAS', payload: categoriasFrescas });
+      dispatch({ type: 'DESELECT_ALL' });
+      dispatch({
+        type: 'SET_TOAST',
+        payload: {
+          tipo: 'success',
+          mensagem: `${result.deleted_count} mapeamento(s) removido(s) com sucesso.`,
+        },
+      });
+    } catch (err) {
+      console.error('[useMappings] clearAllMappings error:', err);
+      dispatch({ type: 'SET_LOADING', payload: false });
+      dispatch({
+        type: 'SET_TOAST',
+        payload: { tipo: 'error', mensagem: err.message || 'Erro ao limpar mapeamentos.' },
       });
     }
   }, [state]);
@@ -242,25 +276,45 @@ export function useMappings() {
     dispatch({ type: 'CLEAR_TOAST' });
   }, []);
 
-  // --- Categorias visíveis (com filtro aplicado localmente) ---
-  const categoriasVisiveis = state.filtroAtivo
+  // ---------------------------------------------------------------------------
+  // Derivações: filtro de status → busca (aplicados em cascata, localmente)
+  // ---------------------------------------------------------------------------
+
+  // 1. Aplica filtro de status
+  const filtradas = state.filtroAtivo
     ? state.categorias.filter(c => c.status === 'NAO_MAPEADA')
     : state.categorias;
 
+  // 2. Aplica busca sobre o resultado do filtro de status
+  const buscaTrimmed = state.busca.trim().toLowerCase();
+
+  const categoriasVisiveis = buscaTrimmed
+    ? filtradas.filter(c =>
+        c.codigo_categoria.toLowerCase().includes(buscaTrimmed) ||
+        c.nome_categoria.toLowerCase().includes(buscaTrimmed) ||
+        (c.grupo_dre_nome?.toLowerCase() ?? '').includes(buscaTrimmed)
+      )
+    : filtradas;
+
+  // totalAntesBusca: tamanho após filtro de status, antes da busca
+  // usado pelo SearchBar para exibir "X de Y"
+  const totalAntesBusca = filtradas.length;
+
   return {
-    // Estado
     ...state,
     categoriasVisiveis,
+    totalAntesBusca,
 
-    // Ações
     selectTenant,
     toggleFilter,
+    setBusca,
     toggleCategory,
     selectAll,
     deselectAll,
     setDreGroup,
     save,
     clearMapping,
+    clearAllMappings,
     clearToast,
   };
 }

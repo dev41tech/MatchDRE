@@ -4,12 +4,6 @@ const { NOME_POR_CODIGO } = require('../constants/dreGroups');
 /**
  * Retorna categorias do tenant com mapeamento atual (LEFT JOIN) e enriquecimento
  * opcional de f_movimentacao (quantidade_uso, ultima_data_uso).
- *
- * NOTA: O JOIN com f_movimentacao assume as colunas:
- *   - f_movimentacao.tenant_id
- *   - f_movimentacao.codigo_categoria
- *   - f_movimentacao.data_lancamento  ← ajuste conforme schema real
- * Se as colunas diferirem, edite o subquery de enriquecimento abaixo.
  */
 async function getCategories(tenantId) {
   const sql = `
@@ -42,13 +36,14 @@ async function getCategories(tenantId) {
   }));
 }
 
+/**
+ * Remove o mapeamento de uma única categoria para o tenant.
+ */
 async function clearMapping(tenantId, chaveCategoria, connection) {
   const [result] = await connection.query(
-    `
-      DELETE FROM bi.map_categoria_grupo_dre
-      WHERE tenant_id = ?
-        AND chave_categoria = ?
-    `,
+    `DELETE FROM bi.map_categoria_grupo_dre
+     WHERE tenant_id = ?
+       AND chave_categoria = ?`,
     [tenantId, chaveCategoria]
   );
 
@@ -59,22 +54,29 @@ async function clearMapping(tenantId, chaveCategoria, connection) {
 }
 
 /**
+ * Remove TODOS os mapeamentos do tenant.
+ * Usado pela ação "Limpar todas" no frontend.
+ * Recebe uma conexão com transação já aberta.
+ */
+async function clearAllMappings(tenantId, connection) {
+  const [result] = await connection.query(
+    `DELETE FROM bi.map_categoria_grupo_dre WHERE tenant_id = ?`,
+    [tenantId]
+  );
+
+  return { deleted: result.affectedRows };
+}
+
+/**
  * Executa bulk-upsert idempotente dentro de uma transação fornecida externamente.
  *
  * Estratégia:
  *  1. Pré-consulta quais chaves já existem → determina inserted vs updated
  *  2. INSERT em lote com ON DUPLICATE KEY UPDATE (single query, all-or-nothing)
- *
- * @param {string}     tenantId   - tenant isolado
- * @param {string}     grupoDre   - código do grupo DRE
- * @param {Array}      categorias - [{ chave_categoria, nome_categoria }]
- * @param {Connection} connection - conexão mysql2 com transação aberta
- * @returns {{ inserted: number, updated: number }}
  */
 async function bulkUpsert(tenantId, grupoDre, categorias, connection) {
   const chaves = categorias.map(c => c.chave_categoria);
 
-  // 1. Descobre quais chaves já existem para derivar contadores
   const [existingRows] = await connection.query(
     `SELECT chave_categoria
      FROM bi.map_categoria_grupo_dre
@@ -84,8 +86,6 @@ async function bulkUpsert(tenantId, grupoDre, categorias, connection) {
   );
   const existingSet = new Set(existingRows.map(r => r.chave_categoria));
 
-  // 2. Monta array de valores para insert em lote
-  // Formato: [[tenant_id, chave_categoria, nome_categoria, grupo_dre], ...]
   const values = categorias.map(c => [
     tenantId,
     c.chave_categoria,
@@ -93,7 +93,6 @@ async function bulkUpsert(tenantId, grupoDre, categorias, connection) {
     grupoDre,
   ]);
 
-  // 3. Insert em lote com ON DUPLICATE KEY UPDATE (idempotente)
   await connection.query(
     `INSERT INTO bi.map_categoria_grupo_dre
        (tenant_id, chave_categoria, nome_categoria, grupo_dre)
@@ -105,11 +104,10 @@ async function bulkUpsert(tenantId, grupoDre, categorias, connection) {
     [values]
   );
 
-  // 4. Deriva contadores por interseção com pré-consulta
   const updated  = categorias.filter(c => existingSet.has(c.chave_categoria)).length;
   const inserted = categorias.length - updated;
 
   return { inserted, updated };
 }
 
-module.exports = { getCategories, bulkUpsert, clearMapping };
+module.exports = { getCategories, bulkUpsert, clearMapping, clearAllMappings };

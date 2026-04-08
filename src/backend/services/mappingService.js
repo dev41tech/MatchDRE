@@ -4,7 +4,6 @@ const { getConnection } = require('../db');
 
 /**
  * Retorna categorias do tenant com seus mapeamentos atuais.
- * Loga tenant_id e quantidade retornada (req. observabilidade R9.1, R9.2).
  */
 async function getCategories(tenantId) {
   console.log(`[mappingService] Carregando categorias para tenant: ${tenantId}`);
@@ -13,7 +12,9 @@ async function getCategories(tenantId) {
   return categorias;
 }
 
-
+/**
+ * Remove o mapeamento de uma única categoria para o tenant.
+ */
 async function clearCategoryMapping(tenantId, chaveCategoria) {
   if (!tenantId) {
     const error = new Error('tenant_id é obrigatório');
@@ -36,7 +37,7 @@ async function clearCategoryMapping(tenantId, chaveCategoria) {
 
     const result = await mappingRepository.clearMapping(
       tenantId,
-      chaveCategoria, 
+      chaveCategoria,
       connection
     );
 
@@ -54,22 +55,41 @@ async function clearCategoryMapping(tenantId, chaveCategoria) {
     connection.release();
   }
 }
+
+/**
+ * Remove TODOS os mapeamentos do tenant atual.
+ * Executa em transação atômica.
+ */
+async function clearAllMappings(tenantId) {
+  if (!tenantId) {
+    const error = new Error('tenant_id é obrigatório');
+    error.statusCode = 400;
+    error.code = 'INVALID_TENANT';
+    throw error;
+  }
+
+  const connection = await getConnection();
+  try {
+    await connection.beginTransaction();
+    const result = await mappingRepository.clearAllMappings(tenantId, connection);
+    await connection.commit();
+
+    console.log(`[mappingService] clearAllMappings tenant=${tenantId} | deleted=${result.deleted}`);
+
+    return { tenant_id: tenantId, deleted_count: result.deleted };
+  } catch (err) {
+    await connection.rollback();
+    console.error(`[mappingService] Erro em clearAllMappings tenant=${tenantId}:`, err);
+    throw err;
+  } finally {
+    connection.release();
+  }
+}
+
 /**
  * Executa bulk-upsert idempotente.
- *
- * Validações (backend não confia no frontend — R8):
- *  - grupoDre deve ser selecionável (não de cálculo) → 422
- *  - categorias não pode ser array vazio → 422
- *  - cada item deve ter chave_categoria não nula → 422
- *
- * Executa dentro de transação; faz rollback em erro.
- *
- * @param {string} tenantId
- * @param {string} grupoDre
- * @param {Array}  categorias - [{ chave_categoria, nome_categoria }]
  */
 async function bulkUpsert(tenantId, grupoDre, categorias) {
-  // --- Validação de grupo DRE ---
   if (CODIGOS_CALCULO.has(grupoDre)) {
     const err = new Error(`Grupo '${grupoDre}' é de cálculo e não pode ser persistido.`);
     err.statusCode = 422;
@@ -84,7 +104,6 @@ async function bulkUpsert(tenantId, grupoDre, categorias) {
     throw err;
   }
 
-  // --- Validação do payload ---
   if (!Array.isArray(categorias) || categorias.length === 0) {
     const err = new Error('O array de categorias não pode ser vazio.');
     err.statusCode = 422;
@@ -108,7 +127,6 @@ async function bulkUpsert(tenantId, grupoDre, categorias) {
     throw err;
   }
 
-  // --- Transação ---
   const connection = await getConnection();
   try {
     await connection.beginTransaction();
@@ -138,7 +156,6 @@ async function bulkUpsert(tenantId, grupoDre, categorias) {
     await connection.rollback();
     console.error(`[mappingService] Erro no bulk-upsert tenant=${tenantId}:`, err);
 
-    // Erros de banco recebem wrapper com código PERSISTENCE_ERROR
     if (!err.statusCode) {
       const wrapped = new Error('Falha ao persistir mapeamentos no banco de dados.');
       wrapped.statusCode = 500;
@@ -152,4 +169,4 @@ async function bulkUpsert(tenantId, grupoDre, categorias) {
   }
 }
 
-module.exports = { getCategories, bulkUpsert, clearCategoryMapping };
+module.exports = { getCategories, bulkUpsert, clearCategoryMapping, clearAllMappings };

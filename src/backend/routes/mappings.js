@@ -7,7 +7,6 @@ const router = Router({ mergeParams: true });
 /**
  * GET /api/v1/tenants/:tenantId/categories/mappings
  * Retorna todas as categorias do tenant com mapeamento atual.
- * O filtro "somente não mapeadas" é aplicado no frontend (V1).
  */
 router.get('/mappings', validateTenant, async (req, res, next) => {
   try {
@@ -36,6 +35,26 @@ router.post('/mappings/bulk-upsert', validateTenant, async (req, res, next) => {
   }
 });
 
+/**
+ * DELETE /api/v1/tenants/:tenantId/categories/mappings
+ * Remove TODOS os mapeamentos do tenant atual.
+ * Responde com: { tenant_id, deleted_count }
+ */
+router.delete('/mappings', validateTenant, async (req, res, next) => {
+  try {
+    const { tenantId } = req.params;
+    console.log(`[route] DELETE categories/mappings (all) tenant=${tenantId}`);
+    const result = await mappingService.clearAllMappings(tenantId);
+    res.json(result);
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * DELETE /api/v1/tenants/:tenantId/categories/:chaveCategoria/mapping
+ * Remove o mapeamento de uma única categoria.
+ */
 router.delete(
   '/:chaveCategoria/mapping',
   validateTenant,
